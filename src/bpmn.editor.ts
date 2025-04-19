@@ -1,4 +1,4 @@
-// src/bpmnEditorProvider.ts
+// src/bpmn.editor.ts
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getNonce } from './util'; // Assuming you have a utility function for nonce
@@ -143,11 +143,6 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
             }
         });
 
-        // Initial load when the editor is first opened (if it's already visible)
-        // The 'ready' message handles the initial load more reliably
-        // if (webviewPanel.visible) {
-        //     updateWebview();
-        // }
     }
 
     /**
@@ -210,7 +205,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
                 height: 100%;
                 margin: 0;
                 padding: 0;
-                overflow: hidden;
+                overflow: auto;
                 background-color: var(--vscode-editor-background); /* Use VS Code theme background */
                 color: var(--vscode-editor-foreground); /* Use VS Code theme foreground */
             }
@@ -220,6 +215,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
             }
             /* Ensure bpmn-js elements inherit colors or use VS Code theme variables */
             .djs-container, .djs-palette, .djs-popup {
+                 overflow: auto;
                  /* Example: Adapt background/foreground if needed */
                 /* background-color: var(--vscode-sideBar-background); */
                 /* color: var(--vscode-sideBar-foreground); */

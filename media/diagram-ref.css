@@ -1,0 +1,100 @@
+
+/* diagram.css */
+
+/* Basic styling for the diagram container */
+#container {
+    background-color: #f8f8f8;
+  }
+  
+  /*
+  * Style for elements (tasks, gateways, events) */
+  .djs-element {
+    stroke: #333;
+    stroke-width: 1.5px;
+    fill: #fff;
+  }
+  
+  /* Style for task elements */
+  .djs-element.bpmn-task {
+    fill: #fcf8e3;
+  }
+  
+  /* Style for start event */
+  .djs-element.bpmn-start-event circle {
+    fill: #dff0d8;
+    stroke: #3c763d;
+  }
+  
+  /* Style for end event */
+  .djs-element.bpmn-end-event circle {
+    fill: #f2dede;
+    stroke: #a94442;
+  }
+  
+  /* Style for sequence flows (arrows) */
+  .djs-connection {
+    stroke: #333;
+    stroke-width: 1.5px;
+    fill: none !important; /* Prevent arrowheads from being filled */
+  }
+  
+  .djs-connection path {
+    fill: none !important;
+  }
+  
+  .djs-connection .djs-arrowhead {
+    fill: #333;
+    stroke: #333;
+  }
+  
+  /* Style for labels */
+  .djs-label text {
+    fill: #333;
+    font-size: 12px;
+  }
+  
+  /* Style for selected elements */
+  .djs-element.selected > .djs-visual,
+  .djs-connection.selected > .djs-visual {
+    stroke: #007bff !important; /* Example selection color */
+    stroke-width: 1px !important;
+  }
+  
+  /* Style for overlays (e.g., for validation errors) */
+  .djs-overlay {
+    position: absolute;
+    background-color: rgba(255, 0, 0, 0.5);
+    color: white;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+  
+  /* Add more specific styling as needed for different BPMN elements */
+  .djs-element.bpmn-gateway {
+    fill: #f0f0f0;
+  }
+  
+  .djs-element.bpmn-intermediate-event circle {
+    fill: #fffacd;
+    stroke: #8a6d3b;
+  }
+
+
+  
+.djs-palette-toggle {
+  display: flex !important; /* Ensure it's not display: none; */
+  visibility: visible !important; /* Ensure it's not visibility: hidden; */
+  /* Add padding or margin if needed to position it correctly */
+  padding: 5px 0; /* Example padding */
+  justify-content: center; /* Center the dots if needed */
+  align-items: center;
+  cursor: pointer; /* Indicate it's clickable */
+  /* You might need to override colors if they blend in */
+  color: var(--vscode-editor-foreground) !important;
+  border-top: 1px solid var(--vscode-panel-border) !important; /* Add a separator line */
+  background-color: var(--vscode-sideBar-background) !important; /* Give it a background */
+  position: sticky; /* Keep it at the bottom while scrolling the entries */
+  bottom: 0;
+  z-index: 10; /* Ensure it's above other elements */
+}

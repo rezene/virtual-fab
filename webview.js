@@ -5,6 +5,7 @@ import BpmnJS from 'bpmn-js/lib/Modeler';
 import PaletteModule from 'bpmn-js/lib/features/palette';
 import ModelingModule from 'bpmn-js/lib/features/modeling';
 import ContextPadModule from 'bpmn-js/lib/features/context-pad';
+
 // Removed direct CSS imports - they will be linked in the HTML
 
 // Acquire the VS Code API instance
@@ -80,16 +81,6 @@ if (container) {
             vscode.postMessage({ command: 'error', message: 'Failed to save BPMN XML: ' + err.message });
         });
     }, 300)); // Debounce to avoid excessive saving during rapid changes
-
-    // Example: Log when the palette is ready (optional)
-    // bpmnModeler.on('palette.create', ({ palette }) => {
-    //     console.log('Palette created:', palette);
-    // });
-
-    // Example: Log element click events (optional)
-    // bpmnModeler.on('element.click', event => {
-    //   console.log('Element clicked:', event.element);
-    // });
 
     // --- Communication with VS Code Extension ---
 

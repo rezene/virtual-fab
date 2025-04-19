@@ -24,6 +24,10 @@
       {
         "command": "virtual-fab.bpmn.create",
         "title": "Create New BPMN File"
+      },
+      {
+        "command": "virtual-fab.bpmn.browseAndOpen", 
+        "title": "Open BPMN File..." 
       }
     ],
     "customEditors": [
@@ -34,7 +38,8 @@
           {
             "filenamePattern": "*.bpmn"
           }
-        ]
+        ],
+        "priority": "default"
       }
     ],
     "menus": {
@@ -48,6 +53,10 @@
       "commandPalette": [
         {
           "command": "virtual-fab.bpmn.create",
+          "when": "!editorFocus"
+        },
+        {
+          "command": "virtual-fab.bpmn.browseAndOpen",
           "when": "!editorFocus"
         }
       ]
