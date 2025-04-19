@@ -68,10 +68,16 @@ async function main() {
             esbuildProblemMatcherPlugin,
             // Copy additional BPMN-JS assets (e.g., CSS files) to dist/assets
             copy({
-                assets: {
-                    from: ['node_modules/bpmn-js/dist/assets/**/*'],
-                    to: ['assets'],
-                },
+                assets: [
+                    {
+                      from: ['node_modules/bpmn-js/dist/assets/**/*'],
+                      to: ['assets'], // Copies bpmn-js assets to dist/assets
+                    }
+                    /*{
+                      from: ['node_modules/bpmn-js-properties-panel/dist/assets/**'],
+                     /* to: ['assets'], // Copies properties-panel assets to dist/assets
+                    }*/
+                  ],
             }),
         ],
     });

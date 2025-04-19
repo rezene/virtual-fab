@@ -1,6 +1,6 @@
 // src/bpmn.editor.ts
 import * as vscode from 'vscode';
-import * as path from 'path';
+
 import { getNonce } from './util'; // Assuming you have a utility function for nonce
 
 // Default empty BPMN diagram
@@ -219,7 +219,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
                 margin: 0;
                 padding: 0;
                 overflow: hidden;
-                background-color: var(--vscode-editor-background);
+                background-color: #fff;
                 color: var(--vscode-editor-foreground);
             }
             /* Flex container for diagram and properties panel */
@@ -229,7 +229,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
                 width: 100%;
             }
             /* Diagram container takes remaining space */
-            #diagram-container {
+            #canvas {
                 flex-grow: 1; /* Allows diagram to take up available space */
                 height: 100%;
                 width: 100%; /* Initial width before flex takes over */
@@ -239,8 +239,8 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
                 width: 280px; /* Adjust width as needed */
                 height: 100%;
                 overflow-y: auto; /* Add scrollbar if content overflows vertically */
-                background-color: var(--vscode-sideBar-background); /* Match VS Code sidebar */
-                color: var(--vscode-sideBar-foreground); /* Match VS Code sidebar */
+                background-color:#fff; /* Match VS Code sidebar */
+                color: #000; /* Match VS Code sidebar */
                 border-left: 1px solid var(--vscode-panel-border); /* Add a separator */
                 box-sizing: border-box; /* Include border in width calculation */
             }
@@ -249,36 +249,12 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
                  color: var(--vscode-editor-foreground);
                  /* background-color might need specific overrides */
              }
-             /* Styles for the properties panel itself */
-             .bio-properties-panel {
-                 /* Ensure the panel inherits colors or uses theme variables */
-                 background-color: var(--vscode-sideBar-background);
-                 color: var(--vscode-sideBar-foreground);
-             }
-             .bio-properties-panel input[type="text"],
-             .bio-properties-panel select,
-             .bio-properties-panel textarea {
-                 background-color: var(--vscode-input-background);
-                 color: var(--vscode-input-foreground);
-                 border: 1px solid var(--vscode-input-border);
-             }
-             .bio-properties-panel input[type="text"]::placeholder,
-             .bio-properties-panel textarea::placeholder {
-                 color: var(--vscode-input-placeholderForeground);
-             }
-             .bio-properties-panel .bio-properties-panel-group-header {
-                 background-color: var(--vscode-sideBarSectionHeader-background);
-                 color: var(--vscode-sideBarSectionHeader-foreground);
-                 border-bottom: 1px solid var(--vscode-panel-border);
-             }
-              .bio-properties-panel .bio-properties-panel-group-body {
-                  border-bottom: 1px solid var(--vscode-panel-border);
-              }
+           
         </style>
     </head>
     <body>
         <div id="editor-container">
-            <div id="diagram-container"></div>
+            <div id="canvas"></div>
             <div id="properties-panel-container"></div>
         </div>
 
@@ -286,6 +262,8 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
     </body>
     </html>`;
     }
+
+    
 
     /**
      * Updates the content of the TextDocument associated with the editor.
