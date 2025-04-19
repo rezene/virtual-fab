@@ -6,6 +6,11 @@ import PaletteModule from 'bpmn-js/lib/features/palette';
 import ModelingModule from 'bpmn-js/lib/features/modeling';
 import ContextPadModule from 'bpmn-js/lib/features/context-pad';
 
+// Import Properties Panel Modules
+import PropertiesPanelModule from 'bpmn-js-properties-panel/lib/PropertiesPanelModule';
+import BpmnPropertiesPanelModule from 'bpmn-js-properties-panel/lib/provider/bpmn';
+
+
 // Removed direct CSS imports - they will be linked in the HTML
 
 // Acquire the VS Code API instance
@@ -42,19 +47,22 @@ function loadDiagram(xml) {
 // --- Initialization ---
 
 // Get the container element from the HTML
-const container = document.getElementById('container');
 
-// Check if the container exists before initializing BpmnJS
-if (container) {
+const diagramContainer = document.getElementById('diagram-container'); // Renamed from 'container'
+const propertiesPanelContainer = document.getElementById('properties-panel-container'); // Get the new container
+
+
     // Create a new BpmnJS Modeler instance
     bpmnModeler = new BpmnJS({
-        container: container, // The DOM element to render the diagram in
+        container: diagramContainer, // The DOM element to render the diagram in
         // Include necessary modules for modeling, palette, and context pad
         // DO NOT include PaletteProvider explicitly here, PaletteModule handles it.
         additionalModules: [
             PaletteModule,
             ModelingModule,
-            ContextPadModule
+            ContextPadModule,
+            PropertiesPanelModule,
+            BpmnPropertiesPanelModule
         ],
         // Configuration for the palette (optional)
         // palette: {
@@ -100,11 +108,7 @@ if (container) {
     // Notify the extension that the webview is ready
     vscode.postMessage({ command: 'ready' });
 
-} else {
-    // Report error if the container element is missing
-    console.error('Container element #container not found in the DOM.');
-    vscode.postMessage({ command: 'error', message: 'Webview container element not found.' });
-}
+
 
 
 // --- Utility Functions ---

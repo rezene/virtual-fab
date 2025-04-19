@@ -172,6 +172,16 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
         const bpmnFontCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
             this.context.extensionUri, 'dist', 'assets', 'bpmn-font', 'css', 'bpmn.css'
         ));
+
+      // Get URIs for properties panel CSS    
+    const propertiesPanelCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
+        this.context.extensionUri, 'dist', 'assets', 'properties-panel.css' // Adjust path if necessary
+    ));
+    // You also need CSS for the specific provider (e.g., BPMN provider)
+    const bpmnPropertiesPanelCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
+         this.context.extensionUri, 'dist', 'assets', 'bpmn-properties-panel.css' // Adjust path if necessary
+    ));
+
         // Custom diagram styling (optional)
         const customDiagramCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
             this.context.extensionUri, 'media', 'diagram.css'
@@ -200,31 +210,77 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
         <link rel="stylesheet" type="text/css" href="${bpmnFontCssUri}">
         <link rel="stylesheet" type="text/css" href="${customDiagramCssUri}">
 
+         <link rel="stylesheet" type="text/css" href="${propertiesPanelCssUri}">
+        <link rel="stylesheet" type="text/css" href="${bpmnPropertiesPanelCssUri}">
+
         <style>
             html, body {
                 height: 100%;
                 margin: 0;
                 padding: 0;
-                overflow: auto;
-                background-color: var(--vscode-editor-background); /* Use VS Code theme background */
-                color: var(--vscode-editor-foreground); /* Use VS Code theme foreground */
+                overflow: hidden;
+                background-color: var(--vscode-editor-background);
+                color: var(--vscode-editor-foreground);
             }
-            #container {
+            /* Flex container for diagram and properties panel */
+            #editor-container {
+                display: flex;
                 height: 100%;
                 width: 100%;
             }
-            /* Ensure bpmn-js elements inherit colors or use VS Code theme variables */
-            .djs-container, .djs-palette, .djs-popup {
-                 overflow: auto;
-                 /* Example: Adapt background/foreground if needed */
-                /* background-color: var(--vscode-sideBar-background); */
-                /* color: var(--vscode-sideBar-foreground); */
+            /* Diagram container takes remaining space */
+            #diagram-container {
+                flex-grow: 1; /* Allows diagram to take up available space */
+                height: 100%;
+                width: 100%; /* Initial width before flex takes over */
             }
-            /* Add more specific theme overrides if necessary */
+            /* Properties panel container (fixed width sidebar) */
+            #properties-panel-container {
+                width: 280px; /* Adjust width as needed */
+                height: 100%;
+                overflow-y: auto; /* Add scrollbar if content overflows vertically */
+                background-color: var(--vscode-sideBar-background); /* Match VS Code sidebar */
+                color: var(--vscode-sideBar-foreground); /* Match VS Code sidebar */
+                border-left: 1px solid var(--vscode-panel-border); /* Add a separator */
+                box-sizing: border-box; /* Include border in width calculation */
+            }
+            /* Ensure bpmn-js elements inherit colors or use VS Code theme variables */
+             .djs-container, .djs-palette, .djs-popup, .djs-context-pad, .djs-modal {
+                 color: var(--vscode-editor-foreground);
+                 /* background-color might need specific overrides */
+             }
+             /* Styles for the properties panel itself */
+             .bio-properties-panel {
+                 /* Ensure the panel inherits colors or uses theme variables */
+                 background-color: var(--vscode-sideBar-background);
+                 color: var(--vscode-sideBar-foreground);
+             }
+             .bio-properties-panel input[type="text"],
+             .bio-properties-panel select,
+             .bio-properties-panel textarea {
+                 background-color: var(--vscode-input-background);
+                 color: var(--vscode-input-foreground);
+                 border: 1px solid var(--vscode-input-border);
+             }
+             .bio-properties-panel input[type="text"]::placeholder,
+             .bio-properties-panel textarea::placeholder {
+                 color: var(--vscode-input-placeholderForeground);
+             }
+             .bio-properties-panel .bio-properties-panel-group-header {
+                 background-color: var(--vscode-sideBarSectionHeader-background);
+                 color: var(--vscode-sideBarSectionHeader-foreground);
+                 border-bottom: 1px solid var(--vscode-panel-border);
+             }
+              .bio-properties-panel .bio-properties-panel-group-body {
+                  border-bottom: 1px solid var(--vscode-panel-border);
+              }
         </style>
     </head>
     <body>
-        <div id="container"></div>
+        <div id="editor-container">
+            <div id="diagram-container"></div>
+            <div id="properties-panel-container"></div>
+        </div>
 
         <script nonce="${nonce}" src="${scriptUri}"></script>
     </body>

@@ -4,14 +4,46 @@
 #container {
   background-color: #f8f8f8;
 }
+
+
+
+#diagram-container {
+  background-color: #f8f8f8; /* Keep background here if you like */
+}
+
+/*
+ The flexbox layout for #editor-container, and
+ height/width for html, body, #editor-container,
+ #diagram-container, and #properties-panel-container
+ are often best kept in the inline style block or
+ a CSS file loaded very early to ensure the layout
+ is established before bpmn-js renders.
+*/
+
+/* Add custom styles for the palette if needed (from previous steps) */
 .djs-palette {
   overflow: auto !important;
-  height: auto !important; /* Try setting height to auto as well */
-  max-height: 100% !important; /* Or a specific max-height if auto doesn't work well */
+  height: auto !important;
+  max-height: 100% !important; /* Or adjust */
 }
 
 .djs-palette .djs-palette-entries {
    overflow: auto !important;
-   /* max-height: 100% !important; */
+   max-height: 100% !important; /* Or adjust */
 }
 
+.djs-palette-toggle {
+  /* ... (keep your toggle styles) ... */
+  display: flex !important;
+  visibility: visible !important;
+  padding: 5px 0;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: var(--vscode-editor-foreground) !important;
+  border-top: 1px solid var(--vscode-panel-border) !important;
+  background-color: var(--vscode-sideBar-background) !important;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}

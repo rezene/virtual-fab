@@ -26,8 +26,8 @@
         "title": "Create New BPMN File"
       },
       {
-        "command": "virtual-fab.bpmn.browseAndOpen", 
-        "title": "Open BPMN File..." 
+        "command": "virtual-fab.bpmn.browseAndOpen",
+        "title": "Open BPMN File..."
       }
     ],
     "customEditors": [
@@ -96,6 +96,8 @@
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "bpmn-js": "^18.5.0"
+    "bpmn-js": "^18.5.0",
+    "bpmn-js-properties-panel": "^5.35.0",
+    "bpmn-js-token-simulation": "^0.38.1"
   }
 }
