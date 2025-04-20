@@ -177,10 +177,14 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
     const propertiesPanelCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
         this.context.extensionUri, 'dist', 'assets', 'properties-panel.css' // Adjust path if necessary
     ));
-    // You also need CSS for the specific provider (e.g., BPMN provider)
-    const bpmnPropertiesPanelCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
-         this.context.extensionUri, 'dist', 'assets', 'bpmn-properties-panel.css' // Adjust path if necessary
+ 
+    const bpmnColorCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
+        this.context.extensionUri, 'dist','assets', 'color-picker.css'
     ));
+    const bpmnTokenSimulationCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
+        this.context.extensionUri, 'dist','assets', 'bpmn-js-token-simulation.css'
+    ));
+
 
         // Custom diagram styling (optional)
         const customDiagramCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
@@ -209,9 +213,11 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
         <link rel="stylesheet" type="text/css" href="${bpmnJsCssUri}">
         <link rel="stylesheet" type="text/css" href="${bpmnFontCssUri}">
         <link rel="stylesheet" type="text/css" href="${customDiagramCssUri}">
+        <link rel="stylesheet" type="text/css" href="${bpmnColorCssUri}">
+         <link rel="stylesheet" type="text/css" href="${bpmnTokenSimulationCssUri}">
 
          <link rel="stylesheet" type="text/css" href="${propertiesPanelCssUri}">
-        <link rel="stylesheet" type="text/css" href="${bpmnPropertiesPanelCssUri}">
+   
 
         <style>
             html, body {
@@ -244,11 +250,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
                 border-left: 1px solid var(--vscode-panel-border); /* Add a separator */
                 box-sizing: border-box; /* Include border in width calculation */
             }
-            /* Ensure bpmn-js elements inherit colors or use VS Code theme variables */
-             .djs-container, .djs-palette, .djs-popup, .djs-context-pad, .djs-modal {
-                 color: var(--vscode-editor-foreground);
-                 /* background-color might need specific overrides */
-             }
+           
            
         </style>
     </head>

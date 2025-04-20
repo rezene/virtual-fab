@@ -97,6 +97,9 @@
   },
   "dependencies": {
     "bpmn-js": "^18.5.0",
+    "bpmn-js-color-picker": "^0.7.1",
+    "bpmn-js-create-append-anything": "^0.6.0",
+    "bpmn-js-element-templates": "^2.5.3",
     "bpmn-js-properties-panel": "^5.35.0",
     "bpmn-js-token-simulation": "^0.38.1"
   }

@@ -6,14 +6,18 @@ import PaletteModule from 'bpmn-js/lib/features/palette';
 import ModelingModule from 'bpmn-js/lib/features/modeling';
 import ContextPadModule from 'bpmn-js/lib/features/context-pad';
 
-
-
-// Import Properties Panel Modules
-// User confirmed this import is correct:
 import {
     BpmnPropertiesPanelModule,
-    BpmnPropertiesProviderModule,
+    BpmnPropertiesProviderModule
   } from 'bpmn-js-properties-panel';
+import BpmnColorPickerModule from 'bpmn-js-color-picker';
+import {
+    CreateAppendAnythingModule,
+    CreateAppendElementTemplatesModule
+  } from 'bpmn-js-create-append-anything';
+  import { ElementTemplatesCoreModule } from 'bpmn-js-element-templates';
+  import TokenSimulationModule from 'bpmn-js-token-simulation';
+
 
 
 // Removed direct CSS imports - they should be linked in the HTML head
@@ -89,11 +93,13 @@ document.addEventListener('DOMContentLoaded', async () => { // <-- Wrap your ini
             PaletteModule,
             ModelingModule,
             ContextPadModule,
-
-
-            // Include Properties Panel Modules
             BpmnPropertiesPanelModule,
-            BpmnPropertiesProviderModule
+            BpmnPropertiesProviderModule,
+            BpmnColorPickerModule, 
+            CreateAppendAnythingModule,
+            CreateAppendElementTemplatesModule,
+            ElementTemplatesCoreModule,
+            TokenSimulationModule
 
         ],
         // Configuration options
@@ -101,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => { // <-- Wrap your ini
           bindTo: document // Or window
         }
     });
+
 
     console.log('BpmnJS Modeler initialized.');
 

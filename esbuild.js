@@ -72,11 +72,19 @@ async function main() {
                     {
                       from: ['node_modules/bpmn-js/dist/assets/**/*'],
                       to: ['assets'], // Copies bpmn-js assets to dist/assets
-                    }
-                    /*{
-                      from: ['node_modules/bpmn-js-properties-panel/dist/assets/**'],
-                     /* to: ['assets'], // Copies properties-panel assets to dist/assets
-                    }*/
+                    },
+                    {
+                      from: ['media/styles/**/*'],
+                      to: ['assets'], // Copies properties-panel assets to dist/assets
+                    },
+                    {
+                        from: ['node_modules/bpmn-js-color-picker/colors/color-picker.css'],
+                        to: ['assets'],
+                      },
+                      {
+                        from: ['node_modules/bpmn-js-token-simulation/assets/css/bpmn-js-token-simulation.css'],
+                        to: ['assets'],
+                      }
                   ],
             }),
         ],
