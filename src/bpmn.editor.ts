@@ -1,5 +1,6 @@
 // src/bpmn.editor.ts
 import * as vscode from 'vscode';
+import { LanguageClient, PublishDiagnosticsNotification, DidOpenTextDocumentNotification, DidChangeTextDocumentNotification, DidCloseTextDocumentNotification } from 'vscode-languageclient/node'; // Import necessary LSP types
 
 import { getNonce } from './util'; // Assuming you have a utility function for nonce
 
@@ -22,50 +23,95 @@ const defaultBpmnContent = `<?xml version="1.0" encoding="UTF-8"?>
  * Provider for BPMN file editors.
  *
  * This class is responsible for creating and managing the webview
- * that hosts the bpmn-js editor.
+ * that hosts the bpmn-js editor and integrating with the LSP client
+ * for DSL code in the property panel.
  */
 export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
+
+    public static readonly viewType = 'virtual-fab.bpmn';
+
+    // Map to store virtual documents for each BPMN element's DSL code
+    // Key: Virtual document URI (e.g., 'dsl-property-panel://element-id')
+    // Value: vscode.TextDocument
+    private readonly virtualDocuments = new Map<string, vscode.TextDocument>();
+
+    // Map to store the webview panel associated with each BPMN document URI
+    // Key: BPMN document URI
+    // Value: vscode.WebviewPanel
+    private readonly documentWebviews = new Map<string, vscode.WebviewPanel>();
+
 
     /**
      * Registers the custom editor provider.
      * @param context The extension context.
+     * @param lspClient The LanguageClient instance.
      * @returns A disposable that tears down the provider.
      */
-    public static register(context: vscode.ExtensionContext): vscode.Disposable {
-        const provider = new BPMNEditorProvider(context);
+    public static register(context: vscode.ExtensionContext, lspClient: LanguageClient): vscode.Disposable {
+        const provider = new BPMNEditorProvider(context, lspClient);
         return vscode.window.registerCustomEditorProvider(BPMNEditorProvider.viewType, provider, {
-            // Enable save without confirmation prompt for custom editors
             webviewOptions: {
-                retainContextWhenHidden: true, // Keep the webview state even when not visible
+                retainContextWhenHidden: true,
             },
-            supportsMultipleEditorsPerDocument: false, // Depending on your needs
+            supportsMultipleEditorsPerDocument: false,
         });
     }
 
-    // The view type identifier used in package.json contribution point
-    public static readonly viewType = 'virtual-fab.bpmn';
-
     constructor(
-        private readonly context: vscode.ExtensionContext
-    ) { }
+        private readonly context: vscode.ExtensionContext,
+        private readonly lspClient: LanguageClient // Accept the LSP client instance
+    ) {
+         // Listen for diagnostics from the LSP server
+         this.lspClient.onNotification(PublishDiagnosticsNotification.type, params => {
+             console.log('Extension: Received diagnostics from LSP server:', params);
+             // Find the corresponding webview panel based on the virtual document URI
+             // We need a way to map the virtual document URI back to the BPMN document URI
+             // and then to the webview panel. This is a simplification.
+             // A more robust solution might involve storing the BPMN document URI
+             // with the virtual document or deriving it from the virtual URI scheme.
+
+             // Assuming the virtual URI is like 'dsl-property-panel://<bpmn-doc-uri>#<element-id>'
+             // or we store a mapping. For simplicity, let's assume we can find the panel.
+
+             // In a multi-editor scenario, you'd need a more complex mapping.
+             // For a single editor per document, we might iterate through open panels.
+             vscode.window.visibleTextEditors.forEach(editor => {
+                 if (editor.document.uri.toString() === this.getBpmnUriFromVirtualUri(params.uri)) {
+                     const webviewPanel = this.documentWebviews.get(editor.document.uri.toString());
+                     if (webviewPanel) {
+                         // Send diagnostics to the webview
+                         webviewPanel.webview.postMessage({
+                             command: 'updateDslDiagnostics',
+                             uri: params.uri, // The virtual document URI
+                             diagnostics: params.diagnostics.map(d => ({ // Map VS Code Diagnostic to a simple object for webview
+                                 range: { start: d.range.start, end: d.range.end },
+                                 message: d.message,
+                                 severity: d.severity, // Map severity enum to number if needed (1:Error, 2:Warning, etc.)
+                             }))
+                         });
+                     }
+                 }
+             });
+         });
+    }
 
     /**
      * Called when our custom editor is opened.
-     *
-     * This method is responsible for initializing the webview panel,
-     * setting its HTML content, and setting up message listeners.
      */
     async resolveCustomTextEditor(
         document: vscode.TextDocument,
         webviewPanel: vscode.WebviewPanel,
         _token: vscode.CancellationToken
     ): Promise<void> {
+        // Store the webview panel associated with this BPMN document
+        this.documentWebviews.set(document.uri.toString(), webviewPanel);
+
         // Setup webview options
         webviewPanel.webview.options = {
-            enableScripts: true, // Allow JavaScript execution
-            localResourceRoots: [ // Restrict webview access to specific local directories
+            enableScripts: true,
+            localResourceRoots: [
                 vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
-                vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'assets'), // Explicitly allow access to assets subdir
+                vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'assets'),
                 vscode.Uri.joinPath(this.context.extensionUri, 'media'),
             ]
         };
@@ -75,75 +121,223 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
 
         // --- Message Handling ---
 
-        // Function to send the document content to the webview
         const updateWebview = () => {
-            // Make sure the panel is still valid
             if (webviewPanel.visible) {
                 console.log('Extension: Sending loadXml command to webview');
                 webviewPanel.webview.postMessage({
                     command: 'loadXml',
-                    xml: document.getText() || defaultBpmnContent, // Send current content or default
+                    xml: document.getText() || defaultBpmnContent,
                 });
             }
         };
 
-        // Listen for messages from the webview
-        webviewPanel.webview.onDidReceiveMessage(e => {
+        webviewPanel.webview.onDidReceiveMessage(async e => {
             console.log(`Extension: Received command: ${e.command}`);
             switch (e.command) {
                 case 'saveXml':
-                    // Received updated XML from the webview, update the backing TextDocument
                     this.updateTextDocument(document, e.xml);
                     return;
                 case 'ready':
-                    // Webview is ready to receive the initial document content
                     console.log('Extension: Webview reported ready');
                     updateWebview();
                     return;
                 case 'error':
-                    // Display errors reported by the webview
                     if (e.message) {
                         vscode.window.showErrorMessage(`BPMN Editor Error: ${e.message}`);
                     }
                     return;
+                case 'bpmnElementSelected':
+                     console.log('Extension: BPMN element selected:', e.elementId);
+                     console.log('Extension: Associated DSL code:', e.dslCode);
+
+                     // Handle element selection: Update property panel and virtual document
+                     this.handleElementSelected(document.uri, e.elementId, e.dslCode, webviewPanel);
+                     return;
+                case 'dslCodeChanged':
+                    console.log('Extension: DSL code changed for element:', e.elementId);
+                    console.log('Extension: New DSL code:', e.dslCode);
+
+                    // Handle DSL code changes: Update virtual document and trigger LSP diagnostics
+                    this.handleDslCodeChanged(document.uri, e.elementId, e.dslCode);
+                    return;
             }
-        }, null, this.context.subscriptions); // Dispose listener with extension context
+        }, null, this.context.subscriptions);
 
         // --- Document Change Handling ---
 
-        // Re-send the document content to the webview when the document changes
         const changeSubscription = vscode.workspace.onDidChangeTextDocument(e => {
-            // Check if the change is for the document associated with this editor
             if (e.document.uri.toString() === document.uri.toString()) {
                 console.log('Extension: Document changed, updating webview');
                 updateWebview();
             }
         });
 
-        // Optional: Update webview if the document is saved (might be redundant with onDidChangeTextDocument)
-        // const saveSubscription = vscode.workspace.onDidSaveTextDocument(doc => {
-        //     if (doc.uri.toString() === document.uri.toString()) {
-        //         console.log('Extension: Document saved, updating webview');
-        //         updateWebview();
-        //     }
-        // });
-
         // Ensure resources are cleaned up when the panel is closed
         webviewPanel.onDidDispose(() => {
-            console.log('Extension: Webview panel disposed');
+            console.log('Extension: Webview panel disposed for document:', document.uri.toString());
             changeSubscription.dispose();
-            // saveSubscription.dispose();
+            this.documentWebviews.delete(document.uri.toString()); // Clean up the webview panel mapping
+
+            // Clean up virtual documents associated with this BPMN document
+            this.virtualDocuments.forEach((doc, uri) => {
+                if (this.getBpmnUriFromVirtualUri(uri) === document.uri.toString()) {
+                    this.virtualDocuments.delete(uri);
+                     // Notify LSP server that the virtual document is closed (optional but good practice)
+                     this.lspClient.sendNotification(DidCloseTextDocumentNotification.type, {
+                         textDocument: { uri: uri.toString() }
+                     });
+                }
+            });
         });
 
-        // If the webview panel becomes visible again, update it
         webviewPanel.onDidChangeViewState(e => {
             if (e.webviewPanel.visible) {
                 console.log('Extension: Webview became visible, updating');
                 updateWebview();
             }
         });
-
     }
+
+    /**
+     * Handles BPMN element selection from the webview.
+     * Creates/updates a virtual document and notifies the LSP server.
+     */
+    private async handleElementSelected(bpmnDocumentUri: vscode.Uri, elementId: string, dslCode: string, webviewPanel: vscode.WebviewPanel) {
+        const virtualUri = this.getVirtualUri(bpmnDocumentUri, elementId);
+        let virtualDoc = this.virtualDocuments.get(virtualUri.toString());
+
+        // Update property panel in the webview
+        webviewPanel.webview.postMessage({
+             command: 'updatePropertyPanel',
+             elementId: elementId,
+             dslCode: dslCode
+        });
+
+        if (!virtualDoc) {
+            // Create a new virtual document if it doesn't exist
+            virtualDoc = await vscode.workspace.openTextDocument({
+                language: 'virtual-fab-dsl-language-id', // Language ID for your DSL (must match clientOptions)
+                content: dslCode // Initial content
+            });
+            this.virtualDocuments.set(virtualUri.toString(), virtualDoc);
+
+            // Notify LSP server that a document was opened
+            this.lspClient.sendNotification(DidOpenTextDocumentNotification.type, {
+                textDocument: {
+                    uri: virtualDoc.uri.toString(),
+                    languageId: virtualDoc.languageId,
+                    version: virtualDoc.version,
+                    text: virtualDoc.getText(),
+                }
+            });
+
+        } else {
+            // If document exists, update its content and notify LSP server of the change
+            // Note: TextDocument is immutable, so we conceptually update it by
+            // creating a new one or managing the content separately.
+            // For LSP, we send a didChange notification with the full text.
+
+             // A simpler approach for LSP is to always send didChange with the full text
+             // when the content changes, even if the TextDocument object isn't formally updated.
+             // However, managing a TextDocument instance helps with consistency.
+
+             // For a true update of the TextDocument instance (less common for virtual docs managed this way):
+             // virtualDoc = vscode.TextDocument.create(virtualUri.toString(), 'virtual-fab-dsl-language-id', virtualDoc.version + 1, dslCode);
+             // this.virtualDocuments.set(virtualUri.toString(), updatedDoc);
+
+             // Send didChange notification with the full new text
+             this.lspClient.sendNotification(DidChangeTextDocumentNotification.type, {
+                 textDocument: {
+                     uri: virtualDoc.uri.toString(),
+                     version: virtualDoc.version + 1, // Increment version
+                 },
+                 contentChanges: [{ text: dslCode }] // Send the full new text
+             });
+
+             // Update the version in our internal map for consistency
+             const updatedDoc = await vscode.workspace.openTextDocument({
+                 language: 'virtual-fab-dsl-language-id',
+                 content: dslCode
+             });
+             this.virtualDocuments.set(virtualUri.toString(), updatedDoc);
+        }
+
+         // Request diagnostics immediately after opening/changing
+         // In a typical setup, the LSP server sends diagnostics automatically
+         // after receiving didOpen or didChange. Explicitly requesting might
+         // be needed in some scenarios or for initial load.
+         // The LSP client handles this, so no explicit message is usually needed here.
+    }
+
+     /**
+      * Handles DSL code changes in the property panel from the webview.
+      * Updates the virtual document and notifies the LSP server.
+      */
+     private async handleDslCodeChanged(bpmnDocumentUri: vscode.Uri, elementId: string, newDslCode: string) {
+         const virtualUri = this.getVirtualUri(bpmnDocumentUri, elementId);
+         const virtualDoc = this.virtualDocuments.get(virtualUri.toString());
+
+         if (virtualDoc) {
+             // Update the content and version of the virtual document
+             const updatedDoc = await vscode.workspace.openTextDocument({
+                 language: 'virtual-fab-dsl-language-id',
+                 content: newDslCode
+             });
+             this.virtualDocuments.set(virtualUri.toString(), updatedDoc);
+
+             // Notify LSP server of the change
+             this.lspClient.sendNotification(DidChangeTextDocumentNotification.type, {
+                 textDocument: {
+                     uri: updatedDoc.uri.toString(),
+                     version: updatedDoc.version,
+                 },
+                 contentChanges: [{ text: newDslCode }] // Send the full new text
+             });
+         } else {
+             console.warn(`Extension: Received dslCodeChanged for unknown virtual document: ${virtualUri.toString()}`);
+             // This might happen if an element was selected, but the virtual doc wasn't created.
+             // You might want to call handleElementSelected here to create it.
+             // This scenario indicates a potential issue in the message flow or state management.
+         }
+     }
+
+
+    /**
+     * Generates a unique URI for a virtual document based on the BPMN document URI and element ID.
+     * @param bpmnDocumentUri The URI of the BPMN document.
+     * @param elementId The ID of the BPMN element.
+     * @returns A unique vscode.Uri for the virtual document.
+     */
+    private getVirtualUri(bpmnDocumentUri: vscode.Uri, elementId: string): vscode.Uri {
+        // Use a custom scheme and include the BPMN document URI and element ID
+        // This allows mapping diagnostics back to the correct context.
+        // Example: 'dsl-property-panel://virtual-fab/path/to/diagram.bpmn#element-id'
+        const uriString = `dsl-property-panel://${bpmnDocumentUri.authority || 'virtual-fab'}${bpmnDocumentUri.path}#${elementId}`;
+        return vscode.Uri.parse(uriString);
+    }
+
+     /**
+      * Extracts the original BPMN document URI from a virtual document URI.
+      * @param virtualUriString The string representation of the virtual document URI.
+      * @returns The string representation of the BPMN document URI.
+      */
+     private getBpmnUriFromVirtualUri(virtualUriString: string): string | undefined {
+         try {
+             const uri = vscode.Uri.parse(virtualUriString);
+             if (uri.scheme === 'dsl-property-panel') {
+                 // Reconstruct the original BPMN URI path
+                 const bpmnPath = uri.path;
+                 // Reconstruct the authority if present
+                 const authority = uri.authority ? `//${uri.authority}` : '';
+                 // The fragment (#element-id) is not part of the BPMN URI
+                 return `file://${authority}${bpmnPath}`; // Assuming original is a file URI
+             }
+         } catch (e) {
+             console.error('Error parsing virtual URI:', e);
+         }
+         return undefined;
+     }
+
 
     /**
      * Generates the HTML content for the webview.
@@ -173,11 +367,11 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
             this.context.extensionUri, 'dist', 'assets', 'bpmn-font', 'css', 'bpmn.css'
         ));
 
-      // Get URIs for properties panel CSS    
+      // Get URIs for properties panel CSS
     const propertiesPanelCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
         this.context.extensionUri, 'dist', 'assets', 'properties-panel.css' // Adjust path if necessary
     ));
- 
+
     const bpmnColorCssUri = webview.asWebviewUri(vscode.Uri.joinPath(
         this.context.extensionUri, 'dist','assets', 'color-picker.css'
     ));
@@ -192,7 +386,6 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
         ));
 
         // Construct the HTML
-        // **Removed comments inside the content attribute of the CSP meta tag**
         return `<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -217,7 +410,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
          <link rel="stylesheet" type="text/css" href="${bpmnTokenSimulationCssUri}">
 
          <link rel="stylesheet" type="text/css" href="${propertiesPanelCssUri}">
-   
+
 
         <style>
             html, body {
@@ -228,44 +421,148 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
                 background-color: #fff;
                 color: var(--vscode-editor-foreground);
             }
-            /* Flex container for diagram and properties panel */
+            /* Flex container for diagram and property panels */
             #editor-container {
                 display: flex;
+                flex-direction: row; /* Canvas on left, sidebar on right */
                 height: 100%;
                 width: 100%;
             }
             /* Diagram container takes remaining space */
             #canvas {
-                flex-grow: 1; /* Allows diagram to take up available space */
+                flex-grow: 1; /* Allows canvas to take up available horizontal space */
                 height: 100%;
-                width: 100%; /* Initial width before flex takes over */
+                width: 0; /* Important for flex-grow to work correctly in a row */
             }
-            /* Properties panel container (fixed width sidebar) */
-            #properties-panel-container {
-                width: 280px; /* Adjust width as needed */
-                height: 100%;
-                overflow-y: auto; /* Add scrollbar if content overflows vertically */
-                background-color:#fff; /* Match VS Code sidebar */
-                color: #000; /* Match VS Code sidebar */
-                border-left: 1px solid var(--vscode-panel-border); /* Add a separator */
-                box-sizing: border-box; /* Include border in width calculation */
+            /* Container for the two property panels (the right sidebar) */
+            #right-sidebar {
+                 display: flex;
+                 flex-direction: column; /* Stack the two panels vertically */
+                 width: 280px; /* Set the width of the sidebar */
+                 height: 100%; /* Take full height of editor-container */
+                 overflow-y: auto; /* Add scrollbar if panels overflow vertically */
+                 border-left: 1px solid var(--vscode-panel-border); /* Separator from canvas */
+                 background-color: #fff; /* Background color for the sidebar */	
+                 color: var(--vscode-sideBar-foreground); /* Consistent text color */
             }
-           
-           
+
+            /* Individual property panel containers within the sidebar */
+            #properties-panel-container,
+            #properties-panel-container-dsl {
+                width: 100%; /* Take full width of the sidebar */
+                height: auto; /* Content determines height */
+                box-sizing: border-box; /* Include padding in width */
+             
+            }
+
+            /* Remove bottom border from the last panel */
+            #properties-panel-container-dsl:last-child {
+                border-bottom: none;
+            }
+
+
+             /* Style for property panel content */
+             /* These styles apply to content *within* the individual panels */
+             .property-panel-content h3, .property-panel-content h4 {
+                 color: var(--vscode-sideBar-foreground); /* Use sidebar foreground for headers */
+                 border-bottom: 1px solid var(--vscode-panel-border);
+                 padding-bottom: 5px;
+                 margin-top: 10px;
+                 margin-bottom: 10px;
+             }
+
+             .property-section {
+                 background-color: #fff;
+                 color: black; /* Use black text for better contrast */
+                 margin-bottom: 10px;
+                 padding: 10px;
+                 border-radius: 5px;
+             }
+
+             .property-section h4 {
+                  border-bottom: none; /* Remove border from h4 inside section */
+                  margin-top: 0;
+                  padding-bottom: 0;
+                  color:black;
+             }
+
+             .dsl-editor-container {
+                 /* No specific background here, handled by property-section */
+                 margin-top: 10px; /* Space above the DSL section */
+             }
+
+             #dsl-code-textarea {
+                 width: 100%;
+                 box-sizing: border-box;
+                 font-family: var(--vscode-editor-font-family);
+                 font-size: var(--vscode-editor-font-size);
+                 background-color: #fff;;
+                 color: black;
+                 border: 1px solid #ccc;
+                 padding: 5px;
+                 resize: vertical;
+             }
+
+             #dsl-code-textarea:focus {
+                 outline: 1px solid var(--vscode-focusBorder);
+                 border-color: var(--vscode-focusBorder);
+             }
+
+             .diagnostics {
+                 margin-top: 5px;
+                 font-size: 0.9em;
+                 color: var(--vscode-editorError-foreground);
+             }
+
+             .diagnostics div {
+                 margin-bottom: 3px;
+                 padding: 2px 5px;
+                 border-radius: 3px;
+             }
+
+             .diagnostics .error {
+                 background-color: var(--vscode-editorError-background);
+                 border-left: 3px solid var(--vscode-editorError-border);
+             }
+
+             .diagnostics .warning {
+                 color: var(--vscode-editorWarning-foreground);
+                 background-color: var(--vscode-editorWarning-background);
+                 border-left: 3px solid var(--vscode-editorWarning-border);
+             }
+
+
         </style>
     </head>
     <body>
         <div id="editor-container">
             <div id="canvas"></div>
-            <div id="properties-panel-container"></div>
-        </div>
+            <div id="right-sidebar">
+                <div id="properties-panel-container">
+                     
+                </div>
+                <div id="properties-panel-container-dsl">
+                     <div class="property-panel-content">
+                       
+                         <div id="element-id-display"></div> 
+
+                        
+                         <div class="property-section dsl-editor-container">
+                             <h4>DSL Code</h4>
+                             <textarea id="dsl-code-textarea" rows="8" cols="50"></textarea>
+                             <div id="dsl-diagnostics" class="diagnostics"></div>
+                         </div>
+                        
+                     </div>
+                </div>
+            </div>
+        </div> 
 
         <script nonce="${nonce}" src="${scriptUri}"></script>
     </body>
     </html>`;
     }
 
-    
 
     /**
      * Updates the content of the TextDocument associated with the editor.
@@ -273,20 +570,17 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
      * @param xml The new XML content.
      */
     private updateTextDocument(document: vscode.TextDocument, xml: string) {
-        // Avoid unnecessary edits if content hasn't changed
         if (document.getText() === xml) {
             return;
         }
 
-        // Create a workspace edit to replace the entire document content
         const edit = new vscode.WorkspaceEdit();
         edit.replace(
             document.uri,
-            new vscode.Range(0, 0, document.lineCount, 0), // Range covering the whole document
+            new vscode.Range(0, 0, document.lineCount, 0),
             xml
         );
 
-        // Apply the edit
         return vscode.workspace.applyEdit(edit);
     }
 }

@@ -83,6 +83,7 @@
     "@typescript-eslint/parser": "^8.28.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
+    "bpmn-js-properties-panel": "^5.35.0",
     "css-loader": "^7.1.2",
     "esbuild": "^0.25.1",
     "esbuild-plugin-copy": "^2.1.1",
@@ -100,7 +101,8 @@
     "bpmn-js-color-picker": "^0.7.1",
     "bpmn-js-create-append-anything": "^0.6.0",
     "bpmn-js-element-templates": "^2.5.3",
-    "bpmn-js-properties-panel": "^5.35.0",
-    "bpmn-js-token-simulation": "^0.38.1"
+    "bpmn-js-token-simulation": "^0.38.1",
+    "camunda-bpmn-moddle": "^7.0.1",
+    "vscode-languageclient": "^9.0.1"
   }
 }
