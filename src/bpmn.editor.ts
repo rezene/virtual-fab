@@ -29,16 +29,7 @@ const defaultBpmnContent = `<?xml version="1.0" encoding="UTF-8"?>
 export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
 
     public static readonly viewType = 'virtual-fab.bpmn';
-
-    // Map to store conceptual virtual documents for each BPMN element's DSL code
-    // We store the URI, content, and version needed for LSP notifications.
-    // Key: Virtual document URI string
-    // Value: { uri: string, content: string, version: number }
     private readonly virtualDocuments = new Map<string, { uri: string, content: string, version: number }>();
-
-    // Map to store the webview panel associated with each BPMN document URI
-    // Key: BPMN document URI string
-    // Value: vscode.WebviewPanel
     private readonly documentWebviews = new Map<string, vscode.WebviewPanel>();
 
 
@@ -65,9 +56,6 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
          // Listen for diagnostics from the LSP server
          this.lspClient.onNotification(PublishDiagnosticsNotification.type, params => {
              console.log('Extension: Received diagnostics from LSP server:', params);
-             // Find the corresponding webview panel based on the virtual document URI
-             // We need a way to map the virtual document URI back to the BPMN document URI
-             // and then to the webview panel.
 
              const bpmnDocumentUriString = this.getBpmnUriFromVirtualUri(params.uri);
              if (!bpmnDocumentUriString) {
@@ -77,14 +65,13 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
 
              const webviewPanel = this.documentWebviews.get(bpmnDocumentUriString);
              if (webviewPanel) {
-                 // Send diagnostics to the webview
                  webviewPanel.webview.postMessage({
                      command: 'updateDslDiagnostics',
-                     uri: params.uri, // The virtual document URI
-                     diagnostics: params.diagnostics.map(d => ({ // Map VS Code Diagnostic to a simple object for webview
+                     uri: params.uri, 
+                     diagnostics: params.diagnostics.map(d => ({ 
                          range: { start: d.range.start, end: d.range.end },
                          message: d.message,
-                         severity: d.severity, // Map severity enum to number if needed (1:Error, 2:Warning, etc.)
+                         severity: d.severity, 
                      }))
                  });
              } else {
@@ -93,9 +80,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
          });
     }
 
-    /**
-     * Called when our custom editor is opened.
-     */
+
     async resolveCustomTextEditor(
         document: vscode.TextDocument,
         webviewPanel: vscode.WebviewPanel,
@@ -114,7 +99,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
             ]
         };
 
-        // Set the HTML content for the webview panel
+        
         webviewPanel.webview.html = this._getWebviewContent(webviewPanel.webview, document);
 
         // --- Message Handling ---
@@ -155,10 +140,6 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
                 case 'dslCodeChanged':
                     console.log('Extension: DSL code changed for element:', e.elementId);
                     console.log('Extension: New DSL code:', e.dslCode);
-
-                    // Handle DSL code changes: Update virtual document and trigger LSP diagnostics
-                    // DO NOT call handleElementSelected here, as it would send updatePropertyPanel
-                    // and interfere with typing.
                     this.handleDslCodeChanged(document.uri, e.elementId, e.dslCode);
                     return;
             }
@@ -177,13 +158,12 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.onDidDispose(() => {
             console.log('Extension: Webview panel disposed for document:', document.uri.toString());
             changeSubscription.dispose();
-            this.documentWebviews.delete(document.uri.toString()); // Clean up the webview panel mapping
+            this.documentWebviews.delete(document.uri.toString()); 
 
             // Clean up virtual documents associated with this BPMN document
             this.virtualDocuments.forEach((doc, uri) => {
                 if (this.getBpmnUriFromVirtualUri(uri) === document.uri.toString()) {
                     this.virtualDocuments.delete(uri);
-                     // Notify LSP server that the virtual document is closed (optional but good practice)
                      this.lspClient.sendNotification(DidCloseTextDocumentNotification.type, {
                          textDocument: { uri: uri.toString() }
                      });
@@ -199,17 +179,9 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
         });
     }
 
-    /**
-     * Handles BPMN element selection from the webview.
-     * Creates/updates a virtual document entry and notifies the LSP server.
-     * Sends updatePropertyPanel message to the webview.
-     */
     private async handleElementSelected(bpmnDocumentUri: vscode.Uri, elementId: string, dslCode: string, webviewPanel: vscode.WebviewPanel) {
         const virtualUri = this.getVirtualUri(bpmnDocumentUri, elementId).toString();
         const virtualDocEntry = this.virtualDocuments.get(virtualUri);
-
-        // Send updatePropertyPanel message to the webview to populate the text area
-        // This should happen ONLY when the element selection changes.
         webviewPanel.webview.postMessage({
              command: 'updatePropertyPanel',
              elementId: elementId,
@@ -219,7 +191,6 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
 
         if (!virtualDocEntry) {
             console.log(`Extension: Creating new virtual document entry for ${virtualUri}`);
-            // Create a new virtual document entry if it doesn't exist
             const newDocEntry = {
                 uri: virtualUri,
                 content: dslCode,
@@ -227,11 +198,10 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
             };
             this.virtualDocuments.set(virtualUri, newDocEntry);
 
-            // Notify LSP server that a document was opened
             this.lspClient.sendNotification(DidOpenTextDocumentNotification.type, {
                 textDocument: {
                     uri: newDocEntry.uri,
-                    languageId: 'virtual-fab-dsl-language-id', // Language ID for your DSL (must match clientOptions)
+                    languageId: 'virtual-fab-dsl-language-id', 
                     version: newDocEntry.version,
                     text: newDocEntry.content,
                 } as TextDocumentItem // Cast to TextDocumentItem
@@ -239,11 +209,11 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
 
         } else {
              console.log(`Extension: Virtual document entry already exists for ${virtualUri}, updating content and version.`);
-            // If document entry exists, update its content and version
+            
             virtualDocEntry.content = dslCode;
             virtualDocEntry.version++; // Increment version
 
-             // Send didChange notification with the full new text
+             
              this.lspClient.sendNotification(DidChangeTextDocumentNotification.type, {
                  textDocument: {
                      uri: virtualDocEntry.uri,
@@ -253,31 +223,21 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
              });
         }
 
-         // Request diagnostics immediately after opening/changing
-         // In a typical setup, the LSP server sends diagnostics automatically
-         // after receiving didOpen or didChange. Explicitly requesting might
-         // be needed in some scenarios or for initial load.
-         // The LSP client handles this, so no explicit message is usually needed here.
+       
     }
 
-     /**
-      * Handles DSL code changes in the property panel from the webview.
-      * Updates the virtual document entry and notifies the LSP server.
-      * Does NOT send updatePropertyPanel message back to the webview.
-      */
+ 
      private async handleDslCodeChanged(bpmnDocumentUri: vscode.Uri, elementId: string, newDslCode: string) {
          const virtualUri = this.getVirtualUri(bpmnDocumentUri, elementId).toString();
          let virtualDocEntry = this.virtualDocuments.get(virtualUri);
 
          if (!virtualDocEntry) {
-             // This scenario should ideally not happen if handleElementSelected is always called on selection.
-             // However, for robustness, we can log a warning and attempt to create the virtual document entry.
+
              console.warn(`Extension: Received dslCodeChanged for unknown virtual document entry: ${virtualUri}. Creating it.`);
-             // Attempt to create the virtual document entry. We need the webview panel reference for this.
+            
              const webviewPanel = this.documentWebviews.get(bpmnDocumentUri.toString());
              if (webviewPanel) {
-                 // Call handleElementSelected to create the virtual document entry and send didOpen.
-                 // Pass the newDslCode so the virtual document is initialized correctly.
+                 
                  await this.handleElementSelected(bpmnDocumentUri, elementId, newDslCode, webviewPanel);
              } else {
                  console.error(`Extension: Could not find webview panel for BPMN document URI ${bpmnDocumentUri.toString()} to create virtual document entry.`);
@@ -287,7 +247,7 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
              console.log(`Extension: Virtual document entry found for ${virtualUri}. Updating content and version.`);
          }
 
-         // Update the content and version of the virtual document entry
+         
          virtualDocEntry.content = newDslCode;
          virtualDocEntry.version++; // Increment version
 
@@ -302,42 +262,24 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
 
          console.log(`Extension: Sent DidChangeTextDocumentNotification for ${virtualUri}.`);
 
-         // DO NOT send updatePropertyPanel message here. The webview handles its own text area input.
+        
      }
 
 
-    /**
-     * Generates a unique URI for a virtual document based on the BPMN document URI and element ID.
-     * @param bpmnDocumentUri The URI of the BPMN document.
-     * @param elementId The ID of the BPMN element.
-     * @returns A unique vscode.Uri for the virtual document.
-     */
     private getVirtualUri(bpmnDocumentUri: vscode.Uri, elementId: string): vscode.Uri {
-        // Use a custom scheme and include the BPMN document URI and element ID
-        // This allows mapping diagnostics back to the correct context.
-        // Example: 'dsl-property-panel://virtual-fab/path/to/diagram.bpmn#element-id'
-        // Ensure the path is correctly encoded
         const encodedPath = encodeURIComponent(bpmnDocumentUri.path);
         const uriString = `dsl-property-panel://${bpmnDocumentUri.authority || 'virtual-fab'}${encodedPath}#${elementId}`;
         return vscode.Uri.parse(uriString);
     }
 
-     /**
-      * Extracts the original BPMN document URI from a virtual document URI.
-      * @param virtualUriString The string representation of the virtual document URI.
-      * @returns The string representation of the BPMN document URI.
-      */
+   
      private getBpmnUriFromVirtualUri(virtualUriString: string): string | undefined {
          try {
              const uri = vscode.Uri.parse(virtualUriString);
              if (uri.scheme === 'dsl-property-panel') {
-                 // The path part of the virtual URI is the encoded BPMN path
                  const encodedBpmnPath = uri.path;
-                 // Decode the path
                  const bpmnPath = decodeURIComponent(encodedBpmnPath);
-                 // Reconstruct the authority if present
                  const authority = uri.authority ? `//${uri.authority}` : '';
-                 // The fragment (#element-id) is not part of the BPMN URI
                  return `file://${authority}${bpmnPath}`; // Assuming original is a file URI
              }
          } catch (e) {
@@ -346,17 +288,9 @@ export class BPMNEditorProvider implements vscode.CustomTextEditorProvider {
          return undefined;
      }
 
-
-    /**
-     * Generates the HTML content for the webview.
-     * @param webview The webview instance.
-     * @param document The document being edited.
-     * @returns The HTML string.
-     */
     private _getWebviewContent(webview: vscode.Webview, document: vscode.TextDocument): string {
         const nonce = getNonce(); // Generate a unique nonce for CSP
 
-        // Get URIs for required resources, converting file paths to webview-accessible URIs
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(
             this.context.extensionUri, 'dist', 'webview.js'
         ));

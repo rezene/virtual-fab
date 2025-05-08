@@ -66,7 +66,7 @@ async function main() {
         treeShaking: production ? true : false, // Disable in dev for safety
         plugins: [
             esbuildProblemMatcherPlugin,
-            // Copy additional BPMN-JS assets (e.g., CSS files) to dist/assets
+            
             copy({
                 assets: [
                     {
