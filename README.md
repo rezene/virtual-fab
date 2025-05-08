@@ -1,10 +1,10 @@
 # virtual-fab README
 
-This is the README for your extension "virtual-fab". After writing up a brief description, we recommend including the following sections.
+This is the README for the extension "virtual-fab". After writing up a brief description, the recommend including the following sections for vs-code extension plugins:
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+Describe specific features of your extension, including screenshots of your extension in action. Image paths are relative to this README file.
 
 For example if there is an image subfolder under your extension project workspace:
 
